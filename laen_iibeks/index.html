@@ -18,7 +18,7 @@
 
   <div class="row">
     <label>Selle raha eest juurde tulnud inimesi</label>
-    <input id="bought_people" value="1000" /> inimest
+    <input id="bought_people" value="4000" /> inimest
   </div>
 
   <div class="row">
@@ -41,7 +41,10 @@
   </div>
 
 
-  <canvas id="popChartCanvas" width="1000" height="500"></canvas>
+  <canvas id="popChartCanvas" width="1000" height="300"></canvas>
+  <canvas id="GDPCanvas" width="1000" height="500"></canvas>
+  <canvas id="workingPopChartCanvas" width="1000" height="500"></canvas>
+  <canvas id="gdpIncrease" width="1000" height="500"></canvas>
 
   <script>
 
@@ -174,7 +177,7 @@
     ];
 
     let workingPopulation = 0;
-    for (let age = 18; age <= 64; age++) {
+    for (let age = 18; age <= 70; age++) {
       workingPopulation += populationPerAge[age];
     }
 
@@ -183,8 +186,14 @@
       curPopulation += populationPerAge[age];
     }
 
+    let curFertilePopulation = 0;
+    for (let age = 20; age <= 45; age++) {
+      curFertilePopulation += populationPerAge[age];
+    }
+
     const GDPPerWorkingPop = curGDP / workingPopulation;
     const DGPPerPop = curGDP / curPopulation;
+    const birthsPerFertile = populationPerAge[0] / curFertilePopulation;
 
     const deathStats = [
       {from: 0, to: 4,	value: 31.6666666666667 },
@@ -220,27 +229,37 @@
       let iteration = 0;
       let iterationOfEven;
       let curLoan = 0;
-      let curPopulationPerAge = [...populationPerAge];
-      console.log();
+      let projectedPopulationPerAge = [...populationPerAge];
       let projectedGdp = curGDP;
       let GDPIncreaseOverBase;
 
       let popChartData = [];
+      let gdpChartData = [];
 
       do {
         iteration++;
         curLoan = curLoan + loan;
 
-        curPopulationPerAge.unshift(populationPerAge[0] + expectedPeoplePerYear);
-        curPopulationPerAge.pop();
+        projectedPopulationPerAge = projectedPopulationPerAge.map((pop, age) => pop - (deatMultipliersPerAge[age]*pop));
+
+        let fertilePopulation = 0;
+        for (let age = 20; age <= 45; age++) {
+          fertilePopulation += projectedPopulationPerAge[age];
+        }
+
+        const newBirths = (fertilePopulation * birthsPerFertile) + expectedPeoplePerYear;
+
+        projectedPopulationPerAge.unshift(newBirths);
+        projectedPopulationPerAge.pop();
 
         // Working population is expected to make the gdp
         // Though it is a very iffy assumption
         let projectedWorkingPopulation = 0;
-        for (let age = 18; age <= 64; age++) {
-          projectedWorkingPopulation += curPopulationPerAge[age];
+        for (let age = 18; age <= 70; age++) {
+          projectedWorkingPopulation += projectedPopulationPerAge[age];
         }
         projectedGdp = GDPPerWorkingPop * projectedWorkingPopulation;
+
 
         // Population is used as reference to estimate the GDP per person increase
         // that comes from increasing number of working population as population increases
@@ -248,7 +267,7 @@
         // gives the same level of life. Quite wild guess this here too.
         let projectedPopulation = 0;
         for (let age = 0; age <= 99; age++) {
-          projectedPopulation = projectedPopulation + curPopulationPerAge[age];
+          projectedPopulation = projectedPopulation + projectedPopulationPerAge[age];
         }
 
         GDPIncreaseOverBase = projectedGdp - (DGPPerPop * projectedPopulation);
@@ -260,20 +279,25 @@
         popChartData.push({
           y: projectedPopulation,
           x: iteration
-        })
+        });
+
+        gdpChartData.push({
+          y: projectedGdp,
+          x: iteration
+        });
 
       } while (iteration <= 1000 || (GDPIncreaseOverBase >= curLoan) );
-
-      console.log(iteration, curLoan / 1000000);
       
       return ({
         yearsROI: (iteration >= 1000) ? undefined : iteration,
         yearsEven: iterationOfEven,
-        popChartData
+        popChartData,
+        gdpChartData
       });
     };
 
-    
+    let myChart;
+    let myGdpChart;
   
     const triggerCalculate = () => {
       const loan = parseFloat(document.getElementById('annual_loan').value * 1000000);
@@ -285,7 +309,8 @@
 
       console.log(result.popChartData);
 
-      const myChart = new Chart(
+      if (myChart) { myChart.destroy(); }
+      myChart = new Chart(
         document.getElementById('popChartCanvas'),
         {
           type: 'scatter',
@@ -293,6 +318,20 @@
             datasets: [{
               label: 'Rahvastiku arvu kõver',
               data: result.popChartData
+            }]
+          }
+        }
+      );
+
+      if (myGdpChart) { myGdpChart.destroy(); }
+      myGdpChart = new Chart(
+        document.getElementById('GDPCanvas'),
+        {
+          type: 'scatter',
+          data: {
+            datasets: [{
+              label: 'GDP',
+              data: result.gdpChartData
             }]
           }
         }
