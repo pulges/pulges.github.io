@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width initial-scale,=1.0">
+  <title>Laenu-eest iibe kalkulaator</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.8.0/dist/chart.min.js"></script>
+</head>
+<body>
+
+  <h1>Iibe laenu tasuvus kalkulaator</h1>
+
+  <p>SIssejuhatus ja seletused</p>
+
+  <h2>Kalkulaator</h2>
+
+  <div class="row">
+    <label>Selle raha eest juurde tulnud inimesi</label>
+    <input id="bought_people" value="1000" /> inimest
+  </div>
+
+  <div class="row">
+    <label>Laenu summa aastas</label>
+    <input id="annual_loan" value="300" /> milj
+  </div>
+
+  <button onClick="triggerCalculate()">Arvuta</button>
+
+  <h2>
+    Vastus
+  </h2>
+
+  <div>
+    <label>Tasuvusaeg aastates</label> <div id="roitime"></div>
+  </div>
+
+  <div>
+    <label>Kasum suurem kui laen</label> <div id="eventime"></div>
+  </div>
+
+
+  <canvas id="popChartCanvas" width="1000" height="500"></canvas>
+
+  <script>
+
+    const workAge = 18;
+    const curGDP = 28522890000;
+
+    // 0-99
+    // discarding all 100 and up from calculation
+    const populationPerAge = [
+      13312,
+
+      56222/4,
+      56222/4,
+      56222/4,
+      56222/4,
+
+      71352/5,
+      71352/5,
+      71352/5,
+      71352/5,
+      71352/5,
+
+      76913/5,
+      76913/5,
+      76913/5,
+      76913/5,
+      76913/5,
+
+      66578/5,  
+      66578/5,
+      66578/5,
+      66578/5,
+      66578/5,
+
+      62027/5,
+      62027/5,
+      62027/5,
+      62027/5,
+      62027/5,
+
+      72479/5,
+      72479/5,
+      72479/5,
+      72479/5,
+      72479/5,
+
+      100253/5,
+      100253/5,
+      100253/5,
+      100253/5,
+      100253/5,
+
+      98782/5,
+      98782/5,
+      98782/5,
+      98782/5,
+      98782/5,
+
+      92290/5,
+      92290/5,
+      92290/5,
+      92290/5,
+      92290/5,
+
+      91346/5,
+      91346/5,
+      91346/5,
+      91346/5,
+      91346/5,
+
+      87998/5,
+      87998/5,
+      87998/5,
+      87998/5,
+      87998/5,
+
+      83564/5,
+      83564/5,
+      83564/5,
+      83564/5,
+      83564/5,
+
+      86534/5, 
+      86534/5,
+      86534/5,
+      86534/5,
+      86534/5,
+
+      79065/5,
+      79065/5, 
+      79065/5, 
+      79065/5, 
+      79065/5, 
+
+      68117/5,
+      68117/5,
+      68117/5,
+      68117/5,
+      68117/5,
+
+      44781/5,
+      44781/5, 
+      44781/5, 
+      44781/5, 
+      44781/5, 
+
+      43811/5,
+      43811/5,
+      43811/5,
+      43811/5,
+      43811/5,
+
+      23752/5,
+      23752/5, 
+      23752/5, 
+      23752/5, 
+      23752/5, 
+
+      10284/5,
+      10284/5,
+      10284/5,
+      10284/5,
+      10284/5,
+      
+      2143/5,
+      2143/5,
+      2143/5,
+      2143/5,
+      2143/5
+    ];
+
+    let workingPopulation = 0;
+    for (let age = 18; age <= 64; age++) {
+      workingPopulation += populationPerAge[age];
+    }
+
+    let curPopulation = 0;
+    for (let age = 0; age <= 99; age++) {
+      curPopulation += populationPerAge[age];
+    }
+
+    const GDPPerWorkingPop = curGDP / workingPopulation;
+    const DGPPerPop = curGDP / curPopulation;
+
+    const deathStats = [
+      {from: 0, to: 4,	value: 31.6666666666667 },
+      {from: 5, to: 9,	value: 8},
+      {from: 10, to: 14,	value: 8.33333333333333},
+      {from: 15, to: 19,	value: 22.6666666666667},
+      {from: 20, to: 24,	value: 26.3333333333333},
+      {from: 25, to: 29,	value: 52.6666666666667},
+      {from: 30, to: 34,	value: 91.3333333333333},
+      {from: 35, to: 39,	value: 125.666666666667},
+      {from: 40, to: 44,	value: 184},
+      {from: 45, to: 49,	value: 288.333333333333},
+      {from: 50, to: 54,	value: 442.666666666667},
+      {from: 55, to: 59,	value: 714.666666666667},
+      {from: 60, to: 64,	value: 1026.66666666667},
+      {from: 65, to: 69, value: 1416.66666666667},
+      {from: 70, to: 74, value: 1557.33333333333},
+      {from: 75, to: 79, value: 1941},
+      {from: 80, to: 84, value: 2588.33333333333},
+      {from: 85, to: 89, value: 2656.66666666667},
+      {from: 90, to: 94, value: 1854.66666666667},
+      {from: 95, to: 99, value: 559.666666666667},
+    ];
+
+    const deatMultipliersPerAge = populationPerAge.map((people, age) => {
+      const deathGroup = deathStats.find(g => age <= g.to && age >= g.from);
+      const groupYearsCount = deathGroup.to - deathGroup.from + 1;
+      const deathsPer1Year = deathGroup.value / groupYearsCount;
+      return deathsPer1Year / populationPerAge[age];
+    });
+
+    const calculate = (loan, expectedPeoplePerYear) => {
+      let iteration = 0;
+      let iterationOfEven;
+      let curLoan = 0;
+      let curPopulationPerAge = [...populationPerAge];
+      console.log();
+      let projectedGdp = curGDP;
+      let GDPIncreaseOverBase;
+
+      let popChartData = [];
+
+      do {
+        iteration++;
+        curLoan = curLoan + loan;
+
+        curPopulationPerAge.unshift(populationPerAge[0] + expectedPeoplePerYear);
+        curPopulationPerAge.pop();
+
+        // Working population is expected to make the gdp
+        // Though it is a very iffy assumption
+        let projectedWorkingPopulation = 0;
+        for (let age = 18; age <= 64; age++) {
+          projectedWorkingPopulation += curPopulationPerAge[age];
+        }
+        projectedGdp = GDPPerWorkingPop * projectedWorkingPopulation;
+
+        // Population is used as reference to estimate the GDP per person increase
+        // that comes from increasing number of working population as population increases
+        // to keep same level on comfort lets assume the DGPPerPop that was at the beginning multiplied by current population
+        // gives the same level of life. Quite wild guess this here too.
+        let projectedPopulation = 0;
+        for (let age = 0; age <= 99; age++) {
+          projectedPopulation = projectedPopulation + curPopulationPerAge[age];
+        }
+
+        GDPIncreaseOverBase = projectedGdp - (DGPPerPop * projectedPopulation);
+        
+        if (!iterationOfEven && (GDPIncreaseOverBase >= loan)) {
+          iterationOfEven = iteration;
+        }
+
+        popChartData.push({
+          y: projectedPopulation,
+          x: iteration
+        })
+
+      } while (iteration <= 1000 || (GDPIncreaseOverBase >= curLoan) );
+
+      console.log(iteration, curLoan / 1000000);
+      
+      return ({
+        yearsROI: (iteration >= 1000) ? undefined : iteration,
+        yearsEven: iterationOfEven,
+        popChartData
+      });
+    };
+
+    
+  
+    const triggerCalculate = () => {
+      const loan = parseFloat(document.getElementById('annual_loan').value * 1000000);
+      const expectedPeoplePerYear = parseFloat(document.getElementById('bought_people').value);
+      const result = calculate(loan, expectedPeoplePerYear);
+
+      document.getElementById('roitime').innerHTML = result.yearsROI ?? 'Mitte enne 1000 aastat';
+      document.getElementById('eventime').innerHTML = result.yearsEven ?? 'Mitte enne 1000 aastat';
+
+      console.log(result.popChartData);
+
+      const myChart = new Chart(
+        document.getElementById('popChartCanvas'),
+        {
+          type: 'scatter',
+          data: {
+            datasets: [{
+              label: 'Rahvastiku arvu kõver',
+              data: result.popChartData
+            }]
+          }
+        }
+      );
+
+    }
+
+
+  </script>
+
+</body>
+</html>
