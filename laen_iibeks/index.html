@@ -7,46 +7,57 @@
   <title>Laenu-eest iibe kalkulaator</title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.8.0/dist/chart.min.js"></script>
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+  <div class="main_wrapper">
 
-  <h1>Iibe laenu tasuvus kalkulaator</h1>
+    <h1>Iibe laenu tasuvus kalkulaator</h1>
 
-  <p>SIssejuhatus ja seletused</p>
+    <p>SIssejuhatus ja seletused</p>
 
-  <h2>Kalkulaator</h2>
+    <h2>Kalkulaator</h2>
 
-  <div class="row">
-    <label>Selle raha eest juurde tulnud inimesi</label>
-    <input id="bought_people" value="4000" /> inimest
+    <div class="row">
+      <label>Laenu summa aastas</label>
+      <input id="annual_loan" value="300" /> milj
+    </div>
+
+    <div class="row">
+      <label>Selle raha eest juurde tulnud inimesi</label>
+      <input id="bought_people" value="4000" /> inimest
+    </div>
+
+    
+
+    <button onClick="triggerCalculate()">Arvuta</button>
+
+    <h2>
+      Vastus
+    </h2>
+
+    <div>
+      <label>Tasuvusaeg aastates</label> <span id="roitime"></span>
+    </div>
+
+    <div>
+      <label>Kasum suurem kui laen</label> <span id="eventime"></span>
+    </div>
+
+    <div class="charts_wrapper">
+      <canvas id="popChartCanvas" width="600" height="200"></canvas>
+      <canvas id="GDPCanvas" width="600" height="200"></canvas>
+      <canvas id="popPyramidEnd" width="600" height="200"></canvas>
+      <canvas id="workingPopChartCanvas" width="600" height="200"></canvas>
+
+      <canvas id="gdpIncrease" width="600" height="200"></canvas>
+    </div>
+
   </div>
-
-  <div class="row">
-    <label>Laenu summa aastas</label>
-    <input id="annual_loan" value="300" /> milj
-  </div>
-
-  <button onClick="triggerCalculate()">Arvuta</button>
-
-  <h2>
-    Vastus
-  </h2>
-
-  <div>
-    <label>Tasuvusaeg aastates</label> <div id="roitime"></div>
-  </div>
-
-  <div>
-    <label>Kasum suurem kui laen</label> <div id="eventime"></div>
-  </div>
-
-
-  <canvas id="popChartCanvas" width="1000" height="300"></canvas>
-  <canvas id="GDPCanvas" width="1000" height="500"></canvas>
-  <canvas id="workingPopChartCanvas" width="1000" height="500"></canvas>
-  <canvas id="gdpIncrease" width="1000" height="500"></canvas>
 
   <script>
+
+    const maxIterations = 300;
 
     const workAge = 18;
     const curGDP = 28522890000;
@@ -235,6 +246,8 @@
 
       let popChartData = [];
       let gdpChartData = [];
+      let percentOfWorkingData = [];
+
 
       do {
         iteration++;
@@ -286,56 +299,57 @@
           x: iteration
         });
 
-      } while (iteration <= 1000 || (GDPIncreaseOverBase >= curLoan) );
+        percentOfWorkingData.push({
+          y: 100 * (projectedWorkingPopulation / projectedPopulation),
+          x: iteration
+        });
+
+      } while (iteration <= maxIterations || (GDPIncreaseOverBase >= curLoan) );
       
       return ({
-        yearsROI: (iteration >= 1000) ? undefined : iteration,
+        yearsROI: (iteration >= maxIterations) ? undefined : iteration,
         yearsEven: iterationOfEven,
         popChartData,
-        gdpChartData
+        gdpChartData,
+        popChartEnd: projectedPopulationPerAge.map((pop, age) => ({ y: pop, x: age })),
+        percentOfWorkingData
       });
     };
 
-    let myChart;
-    let myGdpChart;
+    let charts = {};
+
+    const renderChart = (elementId, label, data) => {
+      if (charts[elementId]) { charts[elementId].destroy(); }
+      charts[elementId] = new Chart(
+        document.getElementById(elementId),
+        {
+          type: 'scatter',
+          data: {
+            datasets: [{
+              label,
+              data
+            }]
+          }
+        }
+      );
+    }
+
+  
   
     const triggerCalculate = () => {
       const loan = parseFloat(document.getElementById('annual_loan').value * 1000000);
       const expectedPeoplePerYear = parseFloat(document.getElementById('bought_people').value);
       const result = calculate(loan, expectedPeoplePerYear);
 
-      document.getElementById('roitime').innerHTML = result.yearsROI ?? 'Mitte enne 1000 aastat';
-      document.getElementById('eventime').innerHTML = result.yearsEven ?? 'Mitte enne 1000 aastat';
+      document.getElementById('roitime').innerHTML = result.yearsROI ?? `Mitte enne ${ maxIterations } aastat`;
+      document.getElementById('eventime').innerHTML = result.yearsEven ?? `Mitte enne ${ maxIterations } aastat`;
 
-      console.log(result.popChartData);
 
-      if (myChart) { myChart.destroy(); }
-      myChart = new Chart(
-        document.getElementById('popChartCanvas'),
-        {
-          type: 'scatter',
-          data: {
-            datasets: [{
-              label: 'Rahvastiku arvu kõver',
-              data: result.popChartData
-            }]
-          }
-        }
-      );
+      renderChart('popChartCanvas', 'Rahvastiku arvu kõver', result.popChartData);
+      renderChart('GDPCanvas', 'SKP - hinnatud ainult tööealiste inimeste osakaalu pealt', result.gdpChartData);
+      renderChart('popPyramidEnd', 'Püramiid lõpus', result.popChartEnd);
 
-      if (myGdpChart) { myGdpChart.destroy(); }
-      myGdpChart = new Chart(
-        document.getElementById('GDPCanvas'),
-        {
-          type: 'scatter',
-          data: {
-            datasets: [{
-              label: 'GDP',
-              data: result.gdpChartData
-            }]
-          }
-        }
-      );
+      renderChart('workingPopChartCanvas', 'tööealiste elanike osakaal %', result.percentOfWorkingData);
 
     }
 

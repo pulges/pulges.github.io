@@ -1,0 +1,13 @@
+.main_wrapper {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+label {
+  display: inline-block;
+  width: 250px;
+}
+
+.charts_wrapper {
+  
+}
