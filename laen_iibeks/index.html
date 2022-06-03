@@ -34,12 +34,16 @@
       Tulemused
     </h2>
 
-    <div>
-      <label>Aastas SKP lisa suurem kui aastas laen</label> <span id="eventime"></span>
+    <div class="result_row">
+      <label>Mitmendal aastal SKP lisa suurem kui aastas laen</label> <span id="eventime"></span>
     </div>
 
-    <div>
-      <label>Kumulatiivne SKP lisa suurem kui kogu laen</label> <span id="roitime"></span>
+    <div class="result_row">
+      <label>Mitmendal aastal kumulatiivne SKP lisa suurem kui kogu laen, kui SKP negatiivset perioodi mitte arvestada</label> <span id="roitime_pos"></span>
+    </div>
+
+    <div class="result_row">
+      <label>Mitmendal aastal kumulatiivne SKP lisa suurem kui kogu laen, kui SKP negatiivset perioodi arvestada</label> <span id="roitime"></span>
     </div>
 
     <div class="charts_wrapper">
@@ -48,7 +52,8 @@
       <canvas id="popPyramidEnd" width="600" height="200"></canvas>
       <canvas id="workingPopChartCanvas" width="600" height="200"></canvas>
 
-      <canvas id="gdpIncrease" width="600" height="200"></canvas>
+      <h3>Laenatud summa kui arvestada, et kogu SKP kasv algsest saab suunata laenu tagasimaksmisele ja interssi ei ole (suht võimatu tingimus)</h3>
+      <canvas id="curLoan" width="600" height="200"></canvas>
     </div>
 
   </div>
@@ -237,20 +242,21 @@
     const calculate = (loan, expectedPeoplePerYear) => {
       let iteration = 0;
       let iterationOfEven;
+      let iterationOfRoiPos;
       let curLoan = 0;
       let projectedPopulationPerAge = [...populationPerAge];
       let projectedGdp = curGDP;
       let GDPIncreaseOverBase;
       let cumulativeGDPWin = 0;
+      let cumulativeGDPWinPos = 0;
 
       let popChartData = [];
       let gdpChartData = [];
       let percentOfWorkingData = [];
-
+      let loanDiffData = [];
 
       do {
         iteration++;
-        
 
         projectedPopulationPerAge = projectedPopulationPerAge.map((pop, age) => pop - (deatMultipliersPerAge[age]*pop));
 
@@ -288,11 +294,15 @@
           iterationOfEven = iteration;
         }
 
+        cumulativeGDPWin += GDPIncreaseOverBase - loan;
         if (iterationOfEven) {
-          cumulativeGDPWin += GDPIncreaseOverBase - loan;
+          cumulativeGDPWinPos += GDPIncreaseOverBase - loan;
         } else {
-          
           curLoan += GDPIncreaseOverBase > 0 ? loan - GDPIncreaseOverBase : loan;
+        }
+
+        if (!iterationOfRoiPos && (cumulativeGDPWinPos >= curLoan)) {
+          iterationOfRoiPos = iteration;
         }
 
         popChartData.push({
@@ -310,15 +320,22 @@
           x: iteration
         });
 
+        loanDiffData.push({
+          y: curLoan - cumulativeGDPWin,
+          x: iteration
+        })
+
       } while (iteration <= maxIterations && (cumulativeGDPWin < curLoan) );
       
       return ({
         yearsROI: (iteration >= maxIterations) ? undefined : iteration,
         yearsEven: iterationOfEven,
+        yearsROIPos: iterationOfRoiPos,
         popChartData,
         gdpChartData,
         popChartEnd: projectedPopulationPerAge.map((pop, age) => ({ y: pop, x: age })),
-        percentOfWorkingData
+        percentOfWorkingData,
+        loanDiffData
       });
     };
 
@@ -348,16 +365,19 @@
       const result = calculate(loan, expectedPeoplePerYear);
 
       document.getElementById('roitime').innerHTML = result.yearsROI ?? `Mitte enne ${ maxIterations } aastat`;
+      document.getElementById('roitime_pos').innerHTML = result.yearsROIPos ?? `Mitte enne ${ maxIterations } aastat`;
       document.getElementById('eventime').innerHTML = result.yearsEven ?? `Mitte enne ${ maxIterations } aastat`;
 
 
       renderChart('popChartCanvas', 'Rahvastiku arvu kõver', result.popChartData);
       renderChart('GDPCanvas', 'SKP - hinnatud ainult tööealiste inimeste osakaalu pealt', result.gdpChartData);
       renderChart('popPyramidEnd', 'Püramiid lõpus', result.popChartEnd);
-
       renderChart('workingPopChartCanvas', 'tööealiste elanike osakaal %', result.percentOfWorkingData);
+      renderChart('curLoan', 'Laenukoormus', result.loanDiffData);
 
     }
+
+    triggerCalculate();
 
 
   </script>

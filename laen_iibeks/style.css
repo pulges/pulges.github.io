@@ -1,6 +1,7 @@
 .main_wrapper {
   max-width: 600px;
   margin: 0 auto;
+  font-size: 12px;
 }
 
 label {
@@ -10,4 +11,8 @@ label {
 
 .charts_wrapper {
   
+}
+
+.result_row {
+  margin-bottom: 1em;
 }
