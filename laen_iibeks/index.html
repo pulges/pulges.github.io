@@ -25,23 +25,21 @@
 
     <div class="row">
       <label>Selle raha eest juurde tulnud inimesi</label>
-      <input id="bought_people" value="4000" /> inimest
+      <input id="bought_people" value="5000" /> inimest
     </div>
-
-    
 
     <button onClick="triggerCalculate()">Arvuta</button>
 
     <h2>
-      Vastus
+      Tulemused
     </h2>
 
     <div>
-      <label>Tasuvusaeg aastates</label> <span id="roitime"></span>
+      <label>Aastas SKP lisa suurem kui aastas laen</label> <span id="eventime"></span>
     </div>
 
     <div>
-      <label>Kasum suurem kui laen</label> <span id="eventime"></span>
+      <label>Kumulatiivne SKP lisa suurem kui kogu laen</label> <span id="roitime"></span>
     </div>
 
     <div class="charts_wrapper">
@@ -243,6 +241,7 @@
       let projectedPopulationPerAge = [...populationPerAge];
       let projectedGdp = curGDP;
       let GDPIncreaseOverBase;
+      let cumulativeGDPWin = 0;
 
       let popChartData = [];
       let gdpChartData = [];
@@ -251,7 +250,7 @@
 
       do {
         iteration++;
-        curLoan = curLoan + loan;
+        
 
         projectedPopulationPerAge = projectedPopulationPerAge.map((pop, age) => pop - (deatMultipliersPerAge[age]*pop));
 
@@ -283,10 +282,17 @@
           projectedPopulation = projectedPopulation + projectedPopulationPerAge[age];
         }
 
-        GDPIncreaseOverBase = projectedGdp - (DGPPerPop * projectedPopulation);
+        GDPIncreaseOverBase = projectedGdp - curGDP;
         
         if (!iterationOfEven && (GDPIncreaseOverBase >= loan)) {
           iterationOfEven = iteration;
+        }
+
+        if (iterationOfEven) {
+          cumulativeGDPWin += GDPIncreaseOverBase - loan;
+        } else {
+          
+          curLoan += GDPIncreaseOverBase > 0 ? loan - GDPIncreaseOverBase : loan;
         }
 
         popChartData.push({
@@ -304,7 +310,7 @@
           x: iteration
         });
 
-      } while (iteration <= maxIterations || (GDPIncreaseOverBase >= curLoan) );
+      } while (iteration <= maxIterations && (cumulativeGDPWin < curLoan) );
       
       return ({
         yearsROI: (iteration >= maxIterations) ? undefined : iteration,
